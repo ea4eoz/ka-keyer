@@ -75,16 +75,25 @@ The Open CW Keyer MK2, both in kit and mounted form seems to come with a logarit
 
 The first lines in the ka-keyer.ino file are defines. You can tweak them a bit to suit your needs:
 
+```
     #define WPM_LOW 15
     #define WPM_HIGH 70
+```
+
 These two lines define the maximun and minumum speed values in WPM for the potentiometer. You can tweak them a bit if you do not plan to use too high or too low speeds. Please do not go over 70 WPM (probably only one of two persons in the worls can) and do not set it under 15 WPM: it is just too slow for paddles. Using WinKeyer commands through a computer you can go as low as 5 WPM and as high as 99 WPM.
 
+```
     #define WEIGHT_LOW 30
     #define WEIGHT_HIGH 50
+```
+
 These two lines define the maximum and minimumdit weight. Please, do not go over 50% (it sounds awful) and do not go under 30%, as the dih is too short to be easily heard. Nominal value is 50%. Using WinKeyer commands through a computer you can go as low as 10% and as high as 90%.
 
+```
     #define RATIO_LOW 30
     #define RATIO_HIGH 40
+```
+
 These two lines define the maximum and minimum ratios for the dash. Using WinKeyer commands through a computer you can go as low as 20 (1:2) and as high as 40 (1:4). Nominal value is 30 (1:3)
 
 You will get a compiler error if you put bad values into these defines.
@@ -105,11 +114,15 @@ In the case you want to return to the original K3NG firmware that came with your
 
 - In the tab keyer_hardware.h, go down to the line 29, you will see:
 
-    //#define HARDWARE_OPENCWKEYER_MK2 // https://github.com/ok1cdj/....
+```
+//#define HARDWARE_OPENCWKEYER_MK2 // https://github.com/ok1cdj/OpenCWKeyerMK2  edit these files: keyer_features_and_options_opencwkeyer_mk2.h keyer_pin_settings_opencwkeyer_mk2.h keyer_settings_opencwkeyer_mk2.h
+```
 
 - Remove the two // at the beginning of the line:
 
-    #define HARDWARE_OPENCWKEYER_MK2 // https://github.com/ok1cdj/....
+```
+#define HARDWARE_OPENCWKEYER_MK2 // https://github.com/ok1cdj/OpenCWKeyerMK2  edit these files: keyer_features_and_options_opencwkeyer_mk2.h keyer_pin_settings_opencwkeyer_mk2.h keyer_settings_opencwkeyer_mk2.h
+```
 
 - Make sure you have the right settings in the Arduino IDE: Board (Arduino Nano), Processor (ATmega328p - Old bootloader), and the right COM port.
 
