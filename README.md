@@ -104,9 +104,11 @@ In the case you want to return to the original K3NG firmware that came with your
 - Once all tabs are loaded, look for a tab named keyer_hardware.h
 
 - In the tab keyer_hardware.h, go down to the line 29, you will see:
+
     //#define HARDWARE_OPENCWKEYER_MK2 // https://github.com/ok1cdj/....
 
 - Remove the two // at the beginning of the line:
+
     #define HARDWARE_OPENCWKEYER_MK2 // https://github.com/ok1cdj/....
 
 - Make sure you have the right settings in the Arduino IDE: Board (Arduino Nano), Processor (ATmega328p - Old bootloader), and the right COM port.
