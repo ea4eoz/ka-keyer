@@ -104,9 +104,9 @@ In the case you want to return to the original K3NG firmware that came with your
 
 - Remove the PROG jumper at the rear of the keyer and connect it to your computer
 
-- Go to https://github.com/k3ng/k3ng_cw_keyer and download the zip file containing the source code. It will be named k3ng_cw_keyer-master.zip
+- Go to https://github.com/k3ng/k3ng_cw_keyer/archive/refs/heads/master.zip and download the zip file containing the source code. It will be named k3ng_cw_keyer-master.zip
 
-- Uncompress the zip file into its own directory
+- Uncompress the zip file into its own directory (k3ng_cw_keyer-master)
 
 - Look for the ino file located at k3ng_cw_keyer-master/k3ng_keyer/k3ng_keyer.ino and open it in the Arduino IDE. It will take a while.
 
