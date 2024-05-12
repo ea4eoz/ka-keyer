@@ -57,7 +57,11 @@ Menu ---> Tools ---> Processor ---> ATmega328p (Old Bootloader)
 
 Menu ---> Tools ---> Port ---> Select the serial port your OpenCWKeyerMK2 is attached to.
 
-After this, using Menu ---> Sketch ---> Upload (or Ctrl-U) should flash your Open CW Keyer MK2 with ka-keyer firmware without problems. If flashing was sucessful you should hear the leter __K__. Remember to put in back the jumper at the rear of the keyer  to prevent accidental flashing and / or keyer resets because the computer's operative system polling the serial ports. Many programs can't use the keyer without the jumper because it resets itself everytime the program opens the serial port (the jumper prevent this). If this is happening, you will hear a __K__ everytime the program is trying to connect with the keyer.
+After this, using Menu ---> Sketch ---> Upload (or Ctrl-U) should flash your Open CW Keyer MK2 with ka-keyer firmware without problems. If flashing was sucessful you should hear the leter __K__.
+
+Remember to put in back the jumper at the rear of the keyer to prevent accidental flashing and / or keyer resets because the computer's operative system polling the serial ports.
+
+Many programs can't use the keyer without the jumper because it resets itself everytime the program opens the serial port (the jumper prevent this). If this is happening, you will hear a __K__ everytime the program is trying to connect with the keyer.
 
 Ka-keyer has been developed and tested using Arduino IDE version 2.3.2 but any other version should work just fine.
 
@@ -74,24 +78,44 @@ The first lines in the ka-keyer.ino file are defines. You can tweak them a bit t
     #define WPM_LOW 15
     #define WPM_HIGH 70
 These two lines define the maximun and minumum speed values in WPM for the potentiometer. You can tweak them a bit if you do not plan to use too high or too low speeds. Please do not go over 70 WPM (probably only one of two persons in the worls can) and do not set it under 15 WPM: it is just too slow for paddles. Using WinKeyer commands through a computer you can go as low as 5 WPM and as high as 99 WPM.
-&nbsp;
-
-&nbsp;
 
     #define WEIGHT_LOW 30
     #define WEIGHT_HIGH 50
-
 These two lines define the maximum and minimumdit weight. Please, do not go over 50% (it sounds awful) and do not go under 30%, as the dih is too short to be easily heard. Nominal value is 50%. Using WinKeyer commands through a computer you can go as low as 10% and as high as 90%.
-&nbsp;
-
-&nbsp;
 
     #define RATIO_LOW 30
     #define RATIO_HIGH 40
-
 These two lines define the maximum and minimum ratios for the dash. Using WinKeyer commands through a computer you can go as low as 20 (1:2) and as high as 40 (1:4). Nominal value is 30 (1:3)
 
 You will get a compiler error if you put bad values into these defines.
+
+## Return to the original firmware
+
+In the case you want to return to the original K3NG firmware that came with your Open CW Keyer MK2, just follo these steps:
+
+- Remove the PROG jumper at the rear of the keyer and connect it to your computer
+
+- Go to https://github.com/k3ng/k3ng_cw_keyer and download the zip file containing the source code. It will be named k3ng_cw_keyer-master.zip
+
+- Uncompress the zip file into its own directory
+
+- Look for the ino file located at k3ng_cw_keyer-master/k3ng_keyer/k3ng_keyer.ino and open it in the Arduino IDE. It will take a while.
+
+- Once all tabs are loaded, look for a tab named keyer_hardware.h
+
+- In the tab keyer_hardware.h, go down to the line 29, you will see:
+    //#define HARDWARE_OPENCWKEYER_MK2 // https://github.com/ok1cdj/....
+
+- Remove the two // at the beginning of the line:
+    #define HARDWARE_OPENCWKEYER_MK2 // https://github.com/ok1cdj/....
+
+- Make sure you have the right settings in the Arduino IDE: Board (Arduino Nano), Processor (ATmega328p - Old bootloader), and the right COM port.
+
+- In the Menu, select Sketch, and then Upload.
+
+- If everything was fine, you will hear HI coming from your keyer.
+
+- Remove the keyer from the computer and place the jumper back.
 
 ## Links
 
