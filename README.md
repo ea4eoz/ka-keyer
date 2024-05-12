@@ -23,21 +23,21 @@ ka-keyer is a simple firmware with an emphasis on high-speed operation for the O
 
 The __Potentiometer__ is used to change keying speed, weight and ratio.
 
-The __Set__ button will change between speed / weight / ratio adjustemnt modes for the potentiometer. Each time this button is pressed, the keyer will say __S__ for speed mode, __W__ for weight and __R__ for ratio mode and the potentiometer will change that setting. The keyer starts always in speed mode, but weight and ratio adjustments are preserved to survive power off.
+The __Set__ button will change between speed / weight / ratio adjustemnt modes for the potentiometer. Each time this button is pressed, the keyer will say __S__ for speed mode, __W__ for weight mode and __R__ for ratio mode and the potentiometer will change that setting. The keyer starts always in speed mode, but weight and ratio adjustments are preserved in EEPROM to survive power off.
 
-__A long press on Set__ (larger than one second) will change between Iambic A, Iambic B and Ultimate keying modes. Iambic A will be announced with __IA__, Iambic B with __IB__ and ultimate mode with __UL__. This setting will survive a power off.
+__A long press on Set__ (larger than one second) will change between Iambic A, Iambic B and Ultimate keying modes. Iambic A will be announced with __IA__, Iambic B with __IB__ and ultimate mode with __UL__. This setting will be preserved in EEPROM to survive a power off.
 
-The __Button 1__ enables or disables the sidetone function. This setting will survive a power off.
+The __Button 1__ enables or disables the sidetone function. This setting will  be preserved in EEPROM to survive a power off.
 
-__A long press on Button 1__ will swap the paddles. Taking as reference the 3.5mm jack, you will hear __A__ for the dit at the tip and dah at the ring of the jack or __N__ for dah at the tip and dit at the ring of the jack.
+__A long press on Button 1__ will swap the paddles. Taking as reference the 3.5mm jack, you will hear __A__ for the dit at the tip and dah at the ring of the jack or __N__ for dah at the tip and dit at the ring of the jack. This setting will be preserved in EEPROM to survive a power off.
 
 ![jackPaddles](https://github.com/ea4eoz/ka-keyer/blob/main/images/jackPaddles.jpg?raw=true)
 
-The __Button 2__ will announce using the built-in buzzer the current keying speed, weight or ratio according to the potentiometer mode selected with Set button. For example __W20__ for 20 WPM, __W45__ for a weight of 45% and __R32__ for a 1:3.2 dit/dah ratio.
+The __Button 2__ will announce using the built-in buzzer the current keying speed, weight or ratio according to the potentiometer mode selected with __Set__ button. For example __W20__ for 20 WPM, __W45__ for a weight of 45% and __R32__ for a 1:3.2 dit/dah ratio.
 
 __A long press on Button 2__ will announce the firmware version. Current version is __V1__.
 
-If you use ka-keyer next to a computer, you can connect to it and open its serial port (1200-8N2) for some extra functions:
+If you use ka-keyer next to a computer, you can connect to it and open its serial port (1200-8N2) with any terminal program for some extra functions:
 
 - Any character sent to the serial port will be keyed using the current speed / weight / ratio values
 
@@ -49,7 +49,7 @@ If you use ka-keyer next to a computer, you can connect to it and open its seria
 
 Before trying to to flash your Open CW Keyer MK2, remove the jumper marked PRG at the back panel.
 
-The firmware uses no external libraries, and it is contained in just one .ino file so it should be very easy to make it work. Most (if not all) Open CW Keyers MK2 come with an Arduino Nano using at ATmega328p flashed with the old bootloader, so for a sucessful flashing, after loading the ka-keyer.ino file, you must set up the arduino IDE in this way:
+The firmware uses no external libraries, and it is contained in just one .ino file so it should be very easy to make it to compile. Most (if not all) Open CW Keyers MK2 come with an Arduino Nano using at ATmega328p flashed with the old bootloader, so for a sucessful flashing, after loading the ka-keyer.ino file, you must set up the arduino IDE in this way:
 
 Menu ---> Tools ---> Board ---> Arduino AVR Boards ---> Arduino Nano
 
@@ -96,6 +96,8 @@ These two lines define the maximum and minimumdit weight. Please, do not go over
 
 These two lines define the maximum and minimum ratios for the dash. Using WinKeyer commands through a computer you can go as low as 20 (1:2) and as high as 40 (1:4). Nominal value is 30 (1:3)
 
+These ranges has been selected as the most useful ones for high speed CW intelligibility as well as normal and casual Morse speeds. I don't recomment you to change them.
+
 You will get a compiler error if you put bad values into these defines.
 
 ## Return to the original firmware
@@ -124,7 +126,7 @@ In the case you want to return to the original K3NG firmware that came with your
 #define HARDWARE_OPENCWKEYER_MK2 // https://github.com/ok1cdj/OpenCWKeyerMK2  edit these files: keyer_features_and_options_opencwkeyer_mk2.h keyer_pin_settings_opencwkeyer_mk2.h keyer_settings_opencwkeyer_mk2.h
 ```
 
-- Make sure you have the right settings in the Arduino IDE: Board (Arduino Nano), Processor (ATmega328p - Old bootloader), and the right COM port.
+- Now make sure you have the right settings in the Arduino IDE: Board (Arduino Nano), Processor (ATmega328p - Old bootloader), and the right COM port.
 
 - In the Menu, select Sketch, and then Upload.
 
