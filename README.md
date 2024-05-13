@@ -15,7 +15,7 @@ ka-keyer is a simple firmware with an emphasis on high-speed operation for the O
 
 - Adjustable dot weight between 30% and 50%
 
-- Adjustable dih-dah ratio from 3.00 to 4.00
+- Adjustable dih-dah ratio from 3.0 to 4.0
 
 - Partial compatibility with WinKeyer 2.3
 
