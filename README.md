@@ -102,7 +102,7 @@ You will get a compiler error if you put bad values into these defines.
 
 ## Return to the original firmware
 
-In the case you want to return to the original K3NG firmware that came with your Open CW Keyer MK2, just follo these steps:
+In the case you want to return to the original K3NG firmware that came with your Open CW Keyer MK2, just follow these steps:
 
 - Remove the PROG jumper at the rear of the keyer and connect it to your computer
 
