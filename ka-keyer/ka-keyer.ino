@@ -1112,17 +1112,20 @@ void task_serialin(){
 }
 
 
-// Arduino does not have TX serial buffer so sending
-// chars back to the computer can produce excesive delays
-// as the arduino gets stalled while transmiting. To aliviate
-// this we use a buffer and send characters one by one,
-// executing all the other tasks in between.
+// Arduino does have TX serial buffer, but if it gets full
+// sending chars back to the computer can produce excesive
+// delays as the arduino gets stalled while transmiting. To
+// aliviate this we use an intermediate buffer and send
+// characters one by one, executing all the other tasks in
+// between.
 //
 // Only Winkeyer status bytes and velocity changes are
 // send directly to the computer
 void task_serialout(){
   if (SerialBufferCount()){
-    Serial.write(SerialBufferRead());
+    if (Serial.availableForWrite()){
+      Serial.write(SerialBufferRead());
+    }
   }
 }
 
