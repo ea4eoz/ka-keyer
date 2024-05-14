@@ -95,8 +95,8 @@
 // Keyer commands
 #define KCMD_NONE        0x00
 #define KCMD_SPACE       0x01
-#define KCMD_DIH_KEYDOWN 0x02
-#define KCMD_DIH_KEYUP   0x03
+#define KCMD_DIT_KEYDOWN 0x02
+#define KCMD_DIT_KEYUP   0x03
 #define KCMD_DAH_KEYDOWN 0x04
 #define KCMD_DAH_KEYUP   0x05
 #define KCMD_SPEED       0x06
@@ -199,7 +199,7 @@ struct WINKEYER{
 
 struct EEPROMDATA{
   byte weight;       // dih weight
-  byte ratio;        // dit/dat ratio
+  byte ratio;        // dit/dah ratio
   byte keyer;        // Keyer mode
   byte swap;         // Swap paddles? 
   byte sidetone;     // Sidetone
@@ -605,6 +605,9 @@ void updateWinKeyerStatus(){
     }
   }
 }
+
+
+
 ///////////////////////////////////////////////////////////////////////////////
 
 
@@ -1104,12 +1107,19 @@ void task_serialin(){
   }
   
   if (KeyerBufferCount() == 0){
-    processWKBuffer();
+    processWinKeyerBuffer();
   }
 }
 
 
-
+// Arduino does not have TX serial buffer so sending
+// chars back to the computer can produce excesive delays
+// as the arduino gets stalled while transmiting. To aliviate
+// this we use a buffer and send characters one by one,
+// executing all the other tasks in between.
+//
+// Only Winkeyer status bytes and velocity changes are
+// send directly to the computer
 void task_serialout(){
   if (SerialBufferCount()){
     Serial.write(SerialBufferRead());
@@ -1130,6 +1140,9 @@ void processWinKeyerCommands(byte cmd){
   // There must be at lest one byte in the
   // buffer before call doWinKeyerCommand()
   if (CommandBufferCount()){
+    // Is this a 600+ lines switch statement?
+    //
+    // Narrator: Yes, it is.
     switch(CommandBuffer[0]){
       case 0x00:  // Admin commands
         if (CommandBufferCount() > 1){
@@ -1186,15 +1199,15 @@ void processWinKeyerCommands(byte cmd){
             case 0x03: 
               // (Admin)Host Close
               // CMDBuffer.buffer = [00] [03] ...
+              //
               // Use this command to turn off the host interface. Winkeyer2 will
               // return to standby mode after this command is issued. Standby
               // settings will be restored.
-              //
+              soundDown();
               Winkeyer.mode = OFF;
               setSerial(1200);
               WinKeyerBufferClear();
               CommandBufferClear();
-              soundDown();
             break;
 
             case 0x04: 
@@ -1221,6 +1234,7 @@ void processWinKeyerCommands(byte cmd){
             case 0x06: 
               // (Admin)Speed A2D
               // CMDBuffer.buffer = [00] [06] ...
+              //
               // Historical command not supported in WK2, always returns 0.
               SerialBufferWrite(0);
               CommandBufferClear();
@@ -1605,6 +1619,13 @@ void processWinKeyerCommands(byte cmd){
         CommandBufferClear();
       break;
 
+      // Well... this is the infamous Winkeyer's Command 16. The
+      // manual says it is detailed described in a separate application
+      // note but that application note was never released so all behavior
+      // has been reverse engineering using N1MM, with does an extensive
+      // use of this command for every conceivable operation. Current
+      // implementation seems to work but nothing is guaranteed
+      //
       case 0x16: //  Input Buffer Command Set
         if (CommandBufferCount() > 1){
           switch (CommandBuffer[1]){
@@ -1619,6 +1640,7 @@ void processWinKeyerCommands(byte cmd){
             case 0x01: 
               // Move input pointer to new position in overwrite mode
               // CMDBuffer.buffer = [16] [01] [arg] ...
+              //
               if (CommandBufferCount() > 2){
                 WinKeyerBufferSetCmd16Ptr(CommandBuffer[2]);
                 WinKeyerBufferSetMode(WK_BUFFER_MODE_OVERWRITE);
@@ -1629,7 +1651,7 @@ void processWinKeyerCommands(byte cmd){
             case 0x02: 
               // Move input pointer to new position in append mode
               // CMDBuffer.buffer = [16] [01] [arg] ...
-              // CMDBuffer.buffer = [16] [02] [arg] ...
+              //
               if (CommandBufferCount() > 2){
                 WinKeyerBufferSetCmd16Ptr(CommandBuffer[2]);
                 WinKeyerBufferSetMode(WK_BUFFER_MODE_APPEND);
@@ -1670,7 +1692,7 @@ void processWinKeyerCommands(byte cmd){
       
       // From this point they are all buffered
       // commands, send them to wkbuffer() to be
-      // processed by processWKBuffer()
+      // processed by processWinKeyerBuffer()
 
       case 0x18: 
         // PTT Control
@@ -1770,7 +1792,7 @@ void processWinKeyerCommands(byte cmd){
 
 
 
-void processWKBuffer(){
+void processWinKeyerBuffer(){
   if (WinKeyerBufferCount()){
     byte b = WinKeyerBufferRead();
     // Buffered commands
@@ -1844,6 +1866,7 @@ void task_keyer(){
   amount = 0;
 
   if (KeyerBufferCount()){
+    // If buffer has something, process it
     byte b = KeyerBufferRead();
     switch (b){
       case KCMD_SPACE:
@@ -1851,7 +1874,7 @@ void task_keyer(){
         waiting = micros();
       break;
 
-      case KCMD_DIH_KEYDOWN:
+      case KCMD_DIT_KEYDOWN:
         if (getFlag(BIT_SIDETONE)){
           tone(BUZZER_OUTPUT, SIDETONE_FREQUENCY);
         }
@@ -1862,7 +1885,7 @@ void task_keyer(){
         waiting = micros();
       break;
 
-      case KCMD_DIH_KEYUP:
+      case KCMD_DIT_KEYUP:
         if (getFlag(BIT_KEYING)){
           digitalWrite(KEYING_OUTPUT, 0);
         }
@@ -1933,6 +1956,7 @@ void task_keyer(){
       break;
     }
   } else {
+    // If buffer is empty, process the paddles
     byte paddle = readPaddles();
     switch (paddle){
       case DITPADDLE:
@@ -2005,11 +2029,11 @@ void cwKeying (char c){
     ptr++;
   }
 
-  // Last dih/dah already make one 
-  // spacing, so two remaining
+  // Last dih/dah already make one spacing,
+  // so makeSpace make the two remaining
   makeSpace();
 
-  // Add literal character
+  // Add literal character for echo
   KeyerBufferWrite(c | 0x80);
 }
 
@@ -2052,8 +2076,8 @@ void cwProsign (char c1, char c2){
     ptr++;
   }
 
-  // Last dih/dah already make one 
-  // spacing, so two remaining
+  // Last dih/dah already make one spacing,
+  // so makeSpace make the two remaining
   makeSpace();
 }
 
@@ -2062,6 +2086,9 @@ void cwProsign (char c1, char c2){
 int readPotentiometer(){
   static int lastValue = -512;  // Force update at power-up
   
+  // In some units the potentiometer readings using the ADC
+  // are very noisy. The average of three consecutive readings
+  // seems to work fine
   int value = analogRead(POTENTIOMETER);
   value += analogRead(POTENTIOMETER);
   value += analogRead(POTENTIOMETER);
@@ -2122,7 +2149,7 @@ byte readButton(){
 
 
 
-// Cycle trhough speed, weight and ratio
+// Cycle through speed, weight and ratio
 void potentiometerModeToggle(){
   byte pot = getPotentiometerMode();
   pot = (pot + 1) % POTENTIOMETER_MODES;
@@ -2147,6 +2174,7 @@ void potentiometerModeToggle(){
 
 
 
+// Turn sidetone on/off and save it in EEPROM
 void sidetoneToggle(){
   if (getFlag(BIT_SIDETONE)){
     setFlag(BIT_SIDETONE, OFF);
@@ -2221,23 +2249,10 @@ void paddleToggle(){
 
 
 
-void dahPaddle(){
-  DecodingBufferWrite('-');
-  makeDah();
-}
-
-
-
-void ditPaddle(){  
-  DecodingBufferWrite('.');
-  makeDih();
-}
-
-
 // Winkeyer 2.3 manual says the potentiometer range is divided
 // into 32 slots numbered 0 to 31, but the same manual states
 // there are 6 bits to store those slots, this is 0 to 63.
-// All programs seems to be happy this the 64 slots.
+// All programs seems to be happy with the 64 slots.
 void wkSendSpeedPot(){
   byte s;
   byte speed = getWPM();
@@ -2256,10 +2271,27 @@ void wkSendSpeedPot(){
 
 
 
+// For decoding, add a dot into the buffer and makes dit
+void ditPaddle(){  
+  DecodingBufferWrite('.');
+  makeDih();
+}
+
+
+
+
+// For decoding, add a dash into the buffer and makes dah
+void dahPaddle(){
+  DecodingBufferWrite('-');
+  makeDah();
+}
+
+
+
 // Add the making of a dit into keyer's buffer
 void makeDih(){
-  KeyerBufferWrite(KCMD_DIH_KEYDOWN);
-  KeyerBufferWrite(KCMD_DIH_KEYUP);
+  KeyerBufferWrite(KCMD_DIT_KEYDOWN);
+  KeyerBufferWrite(KCMD_DIT_KEYUP);
 }
 
 
@@ -2303,12 +2335,14 @@ void soundDown(){
 
 
 
+// Must paddle characters be echoed back?
 byte paddleEcho(){
   return (Winkeyer.mode == OFF) || (Winkeyer.modereg & WK_PADDLE_ECHO_BIT);
 }
 
 
 
+// Must serial characters be echoed back?
 byte serialEcho(){
   return (Winkeyer.mode == OFF) || (Winkeyer.modereg & WK_SERIAL_ECHO_BIT);
 }
@@ -2316,7 +2350,7 @@ byte serialEcho(){
 
 
 void wkSetSpeed(byte value){
-  if (value){
+  if ((value >= 5) && (value <= 99)){
     cwCommand(KCMD_SPEED, value);
   }else{
     cwCommand(KCMD_SPEED, CW_PLAY_WPM); // TO-DO
@@ -2326,7 +2360,7 @@ void wkSetSpeed(byte value){
 
 
 // void wkSetWeight(byte value){
-//   if((value>= 10) && (value <=90)){
+//   if((value >= 10) && (value <= 90)){
 //     CW_Command(KCMD_WEIGHT, value);
 //   }
 // }

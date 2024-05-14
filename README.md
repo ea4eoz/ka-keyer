@@ -87,14 +87,14 @@ These two lines define the maximun and minumum speed values in WPM for the poten
     #define WEIGHT_HIGH 50
 ```
 
-These two lines define the maximum and minimumdit weight. Please, do not go over 50% (it sounds awful) and do not go under 30%, as the dih is too short to be easily heard. Nominal value is 50%. Using WinKeyer commands through a computer you can go as low as 10% and as high as 90%.
+These two lines define the maximum and minimumdit weight. Please, do not go over 50% (it sounds awful) and do not go under 30%, as the dih is too short to be easily heard. Nominal value is 50%.
 
 ```
     #define RATIO_LOW 30
     #define RATIO_HIGH 40
 ```
 
-These two lines define the maximum and minimum ratios for the dash. Using WinKeyer commands through a computer you can go as low as 20 (1:2) and as high as 40 (1:4). Nominal value is 30 (1:3)
+These two lines define the maximum and minimum ratios for the dash. Nominal value is 30 (1:3).
 
 These ranges has been selected as the most useful ones for high speed CW intelligibility as well as normal and casual Morse speeds. I don't recomment you to change them.
 
