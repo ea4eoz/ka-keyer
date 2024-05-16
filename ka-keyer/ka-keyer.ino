@@ -349,7 +349,6 @@ void loop() {
   task_ptt();
   task_serialin();
   task_keyer();
-  task_serialout();
 }
 
 
@@ -543,47 +542,8 @@ void WinKeyerBufferSetMode(byte mode){
 
 ///////////////////////////////////////////////////////////////////////////////
 
-static byte SerialBuffer[SERIAL_BUFFER_SIZE];
-static byte SerialBuffer_writeptr = 0;
-static byte SerialBuffer_readptr = 0;
-static byte SerialBuffer_count = 0;
 
 
-
-void SerialBufferClear(){
-  SerialBuffer_writeptr = 0;
-  SerialBuffer_readptr = 0;
-  SerialBuffer_count = 0;
-}
-
-
-
-void SerialBufferWrite(byte b){
-  if (SerialBufferCount() < SERIAL_BUFFER_SIZE){
-    SerialBuffer[SerialBuffer_writeptr++] = b;
-    SerialBuffer_writeptr &= SERIAL_BUFFER_MASK;
-    SerialBuffer_count++;
-  }
-}
-
-
-
-byte SerialBufferRead(){
-  byte b = SerialBuffer[SerialBuffer_readptr++];
-  SerialBuffer_readptr &= SERIAL_BUFFER_MASK;
-  SerialBuffer_count--;
-  return b;
-}
-
-
-
-byte SerialBufferCount(){
-  return SerialBuffer_count;
-}
-
-
-
-///////////////////////////////////////////////////////////////////////////////
 void updateWinKeyerStatus(){
   if (Winkeyer.mode){
     byte status = WK_STATUS_DEFAULT;
@@ -1112,24 +1072,6 @@ void task_serialin(){
 }
 
 
-// Arduino does have TX serial buffer, but if it gets full
-// sending chars back to the computer can produce excesive
-// delays as the arduino gets stalled while transmiting. To
-// aliviate this we use an intermediate buffer and send
-// characters one by one, executing all the other tasks in
-// between.
-//
-// Only Winkeyer status bytes and velocity changes are
-// send directly to the computer
-void task_serialout(){
-  if (SerialBufferCount()){
-    if (Serial.availableForWrite()){
-      Serial.write(SerialBufferRead());
-    }
-  }
-}
-
-
 
 void processWinKeyerCommands(byte cmd){
   // Put cmd in buffer
@@ -1195,8 +1137,8 @@ void processWinKeyerCommands(byte cmd){
               CommandBufferClear();
               Winkeyer.mode = WK_MODE_1;
               Winkeyer.status = WK_STATUS_DEFAULT;
-              SerialBufferWrite(23); // Version 2.3
-              SerialBufferWrite(Winkeyer.status);
+              Serial.write(23); // Version 2.3
+              Serial.write(Winkeyer.status);
             break;
 
             case 0x03: 
@@ -1220,7 +1162,7 @@ void processWinKeyerCommands(byte cmd){
               // Used to test the serial interface. The next character sent to
               // Winkeyer2 after this command will be echoed back to the host.
               if (CommandBufferCount() > 2){
-                SerialBufferWrite(CommandBuffer[2]);
+                Serial.write(CommandBuffer[2]);
                 CommandBufferClear();
               }
             break;
@@ -1230,7 +1172,7 @@ void processWinKeyerCommands(byte cmd){
               // CMDBuffer.buffer = [00] [05] ...
               //
               // Historical command not supported in WK2, always returns 0.
-              SerialBufferWrite(0);
+              Serial.write(0);
               CommandBufferClear();
             break;
 
@@ -1239,7 +1181,7 @@ void processWinKeyerCommands(byte cmd){
               // CMDBuffer.buffer = [00] [06] ...
               //
               // Historical command not supported in WK2, always returns 0.
-              SerialBufferWrite(0);
+              Serial.write(0);
               CommandBufferClear();
             break;
 
@@ -1251,21 +1193,21 @@ void processWinKeyerCommands(byte cmd){
               // back in the same order as issued by the Load Defaults command.
               // Again, this command is a diagnostic aid. Only issue this command
               // when host interface is closed.
-              SerialBufferWrite(Winkeyer.modereg);          // (0x0E) Mode register
-              SerialBufferWrite(Settings.wpm);              // (0x02) Speed in WPM
-              SerialBufferWrite(0x05);                      // (0x01) Sidetone frequency
-              SerialBufferWrite(Settings.weight);           // (0x03) Weight
-              SerialBufferWrite(0x00);                      // (0x04) Lead-in time
-              SerialBufferWrite(0x00);                      // (0x04) Tail time
-              SerialBufferWrite(Winkeyer.pot_min);          // (0x05) Min WPM
-              SerialBufferWrite(Winkeyer.pot_range);        // (0x05) WPM range
-              SerialBufferWrite(0x00);                      // (0x10) 1st extension
-              SerialBufferWrite(0x00);                      // (0x11) Key compensation
-              SerialBufferWrite(0x00);                      // (0x0D) Farnsworth WPM
-              SerialBufferWrite(0x00);                      // (0x12) Paddle Setpoint
-              SerialBufferWrite((10 * Settings.ratio) / 6); // (0x17) Dit/Dah ratio
-              SerialBufferWrite(0x06);                      // (0x09) Pin configuration
-              SerialBufferWrite(0x00);                      // Don't care, always zero
+              Serial.write(Winkeyer.modereg);          // (0x0E) Mode register
+              Serial.write(Settings.wpm);              // (0x02) Speed in WPM
+              Serial.write(0x05);                      // (0x01) Sidetone frequency
+              Serial.write(Settings.weight);           // (0x03) Weight
+              Serial.write(0x00);                      // (0x04) Lead-in time
+              Serial.write(0x00);                      // (0x04) Tail time
+              Serial.write(Winkeyer.pot_min);          // (0x05) Min WPM
+              Serial.write(Winkeyer.pot_range);        // (0x05) WPM range
+              Serial.write(0x00);                      // (0x10) 1st extension
+              Serial.write(0x00);                      // (0x11) Key compensation
+              Serial.write(0x00);                      // (0x0D) Farnsworth WPM
+              Serial.write(0x00);                      // (0x12) Paddle Setpoint
+              Serial.write((10 * Settings.ratio) / 6); // (0x17) Dit/Dah ratio
+              Serial.write(0x06);                      // (0x09) Pin configuration
+              Serial.write(0x00);                      // Don't care, always zero
               CommandBufferClear();
             break;
 
@@ -1281,7 +1223,7 @@ void processWinKeyerCommands(byte cmd){
               // CMDBuffer.buffer = [00] [09] ...
               //
               // Historical command not supported in WK2, always returns 0.
-              SerialBufferWrite(0);
+              Serial.write(0);
               CommandBufferClear();
             break;
 
@@ -1360,7 +1302,7 @@ void processWinKeyerCommands(byte cmd){
               // CMDBuffer.buffer = [00] [10] ...
               //
               // If this command is issued, WK2 will respond with a zero.
-              SerialBufferWrite(0);
+              Serial.write(0);
               CommandBufferClear();
             break;
 
@@ -1618,7 +1560,7 @@ void processWinKeyerCommands(byte cmd){
         // Winkeyer2 Status
         // CMDBuffer.buffer = [15] ...
         //
-        SerialBufferWrite(Winkeyer.status);
+        Serial.write(Winkeyer.status);
         CommandBufferClear();
       break;
 
@@ -1954,7 +1896,7 @@ void task_keyer(){
 
       case 0x80 ... 0xFF:
         if (getFlag(BIT_LOCALECHO) && serialEcho()){
-          SerialBufferWrite(b & 0x7F);
+          Serial.write(b & 0x7F);
         }
       break;
     }
