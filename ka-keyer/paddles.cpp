@@ -1,75 +1,90 @@
-#include "cwdecoder.h"
-#include "keyer.h"
-#include "paddles.h"
-#include "settings.h"
+#include "paddlesdecoder.hpp"
+#include "keyer.hpp"
+#include "paddles.hpp"
+#include "settings.hpp"
 
-extern Keyer keyer;
-extern Settings settings;
-extern CWDecoder cwdecoder;
+#define KEYER_MODE_ULTIMATE 0
+#define KEYER_MODE_IAMBIC 1
+#define KEYER_MODE_IAMBIC_A 2
+#define KEYER_MODE_IAMBIC_B 3
 
-Paddles::Paddles(uint8_t leftPaddle, uint8_t rightPaddle){
-  _left_paddle = leftPaddle;
-  _right_paddle = rightPaddle;
-  pinMode(_left_paddle, INPUT_PULLUP);
-  pinMode(_right_paddle, INPUT_PULLUP);
+static uint8_t leftPaddle;
+static uint8_t rightPaddle;
+static uint8_t wanted = 0;
+static unsigned long lastTimestamp;
+
+// Configure paddles pins
+void paddlesBegin(uint8_t lp, uint8_t rp) {
+  leftPaddle = lp;
+  rightPaddle = rp;
+  pinMode(leftPaddle, INPUT_PULLUP);
+  pinMode(rightPaddle, INPUT_PULLUP);
 }
 
-void Paddles::process(){
-  switch(settings.getKeyer()){
-    case KEYER_MODE_ULTIMATE:
-      process_ultimate();
-    break;
-
-    case KEYER_MODE_IAMBIC:
-      process_imabic();
-    break;
-
-    case KEYER_MODE_IAMBIC_A:
-      process_imabica();
-    break;
-
-    case KEYER_MODE_IAMBIC_B:
-      process_imabicb();
-    break;
-  }
-}
-
-uint8_t Paddles::readPaddles(){
+// Read paddles
+static uint8_t readPaddles() {
   uint8_t paddles = 0;
-  if (settings.getReverse()){
+  if (settingsGetReverse()) {
     // tip = dah, ring = dih
-    if (digitalRead(_right_paddle) == LOW){
+    if (digitalRead(rightPaddle) == LOW) {
       paddles |= 0x01;
     }
-
-    if (digitalRead(_left_paddle) == LOW){
+    if (digitalRead(leftPaddle) == LOW) {
       paddles |= 0x02;
-    }  
+    }
   } else {
     // tip = dih, ring = dah
-    if (digitalRead(_right_paddle) == LOW){
+    if (digitalRead(rightPaddle) == LOW) {
       paddles |= 0x02;
     }
-
-    if (digitalRead(_left_paddle) == LOW){
+    if (digitalRead(leftPaddle) == LOW) {
       paddles |= 0x01;
-    }  
+    }
   }
-
-  if (paddles){
-    _lastTimestamp = micros();
+  if (paddles) {
+    lastTimestamp = micros();
   }
-
   return paddles;
 }
 
-void Paddles::process_ultimate(){
-  static uint8_t last_keying = NONE;
+// For decoding, add a dot into the buffer and makes dit
+static void ditPaddle() {
+  paddlesDecoderWrite('.');
+  keyerSendDih();
+}
 
-  if (!keyer.bufferCount()){
+// For decoding, add a dash into the buffer and makes dah
+static void dahPaddle() {
+  paddlesDecoderWrite('-');
+  keyerSendDah();
+}
+
+static void paddlesProcess_ultimate(){
+  static uint8_t last_keying = NONE;
+  static bool memoEnabled = 1;
+  uint8_t paddles;
+
+  if (keyerIsKeying()){
+    if (wanted && memoEnabled){
+      paddles = readPaddles();
+      if ((wanted == DIT) && (paddles == DIT)){
+        ditPaddle();
+        last_keying = DIT;
+        wanted = NONE;
+        memoEnabled = false;
+      }
+      if ((wanted == DAH) && (paddles == DAH)){
+        dahPaddle();
+        last_keying = DAH;
+        wanted = NONE;
+        memoEnabled = false;
+      }
+    }
+  } else {
     switch (readPaddles()){
       case NONE:
         last_keying = NONE;
+        memoEnabled = true;
       break;
 
       case DIT:
@@ -94,21 +109,21 @@ void Paddles::process_ultimate(){
   }
 }
 
-void Paddles::process_imabic(){
+static void paddlesProcess_imabic() {
   static uint8_t polling = DIT;
 
-  if (!keyer.bufferCount()){
-    switch (readPaddles() & polling){
+  if (!keyerIsKeying()) {
+    switch (readPaddles() & polling) {
       case DIT:
         ditPaddle();
-      break;
+        break;
 
       case DAH:
         dahPaddle();
-      break;
+        break;
     }
 
-    if (polling == DIT){
+    if (polling == DIT) {
       polling = DAH;
     } else {
       polling = DIT;
@@ -116,19 +131,18 @@ void Paddles::process_imabic(){
   }
 }
 
-void Paddles::process_imabica(){
+static void paddlesProcess_imabica() {
   static uint8_t polling = DIT;
-  static uint8_t lastDit = 1;
-  static uint8_t currentDit;
+  static bool lastDit = true;
+  static bool currentDit;
 
-  if (keyer.bufferCount()){
-    // Keyer buffer not empty
-    if (_wanted && (keyer.bufferCount() < 2)){
-      if (_wanted == DIT){
+  if (keyerIsKeying()) {
+    if (wanted) {
+      if (wanted == DIT) {
         currentDit = readPaddles() & DIT;
-        if ((currentDit) && (!lastDit)){
+        if ((currentDit) && (!lastDit)) {
           ditPaddle();
-          _wanted = NONE;
+          wanted = NONE;
           polling = DAH;
         }
       }
@@ -136,17 +150,17 @@ void Paddles::process_imabica(){
     }
   } else {
     // Keyer buffer is empty
-    lastDit = 1;
-    switch (readPaddles() & polling){
+    lastDit = true;
+    switch (readPaddles() & polling) {
       case DIT:
         ditPaddle();
-      break;
+        break;
 
       case DAH:
         dahPaddle();
-      break;
+        break;
     }
-    if (polling == DIT){
+    if (polling == DIT) {
       polling = DAH;
     } else {
       polling = DIT;
@@ -154,54 +168,61 @@ void Paddles::process_imabica(){
   }
 }
 
-void Paddles::process_imabicb(){
+static void paddlesProcess_imabicb() {
   uint8_t paddles;
 
-  if (keyer.bufferCount()){
-    // Keyer buffer not empty
-    if (_wanted && (keyer.bufferCount() < 2)){
+  if (keyerIsKeying()) {
+    if (wanted) {
       paddles = readPaddles();
-      if ((_wanted == DIT) && (paddles & DIT)){
+      if ((wanted == DIT) && (paddles & DIT)) {
         ditPaddle();
-        _wanted = NONE;
+        wanted = NONE;
       }
-      if ((_wanted == DAH) && (paddles & DAH)){
+      if ((wanted == DAH) && (paddles & DAH)) {
         dahPaddle();
-        _wanted = NONE;
+        wanted = NONE;
       }
     }
   } else {
     // Keyer buffer is empty
     paddles = readPaddles();
 
-    switch (paddles){
+    switch (paddles) {
       case DIT:
         ditPaddle();
-      break;
+        break;
 
       case DAH:
         dahPaddle();
-      break;
+        break;
     }
   }
 }
 
-void Paddles::setWakeup(uint8_t wanted){
-  _wanted = wanted;
+void paddlesProcess() {
+  switch (settingsGetKeyer()) {
+    case KEYER_MODE_ULTIMATE:
+      paddlesProcess_ultimate();
+      break;
+
+    case KEYER_MODE_IAMBIC:
+      paddlesProcess_imabic();
+      break;
+
+    case KEYER_MODE_IAMBIC_A:
+      paddlesProcess_imabica();
+      break;
+
+    case KEYER_MODE_IAMBIC_B:
+      paddlesProcess_imabicb();
+      break;
+  }
 }
 
-unsigned long Paddles::getLastTimestamp(){
-  return _lastTimestamp;
+void paddlesSetWakeup(uint8_t w) {
+  wanted = w;
 }
 
-// For decoding, add a dot into the buffer and makes dit
-void Paddles::ditPaddle(){  
-  cwdecoder.write('.');
-  keyer.sendDih();
-}
-
-// For decoding, add a dash into the buffer and makes dah
-void Paddles::dahPaddle(){
-  cwdecoder.write('-');
-  keyer.sendDah();
+unsigned long paddlesGetLastTimestamp() {
+  return lastTimestamp;
 }

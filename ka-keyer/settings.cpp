@@ -1,261 +1,216 @@
-#include "EEPROM.h"
-#include "settings.h"
-#include "winkeyer.h"
+#include "settings.hpp"
+#include "storage.hpp"
+#include "userinterface.hpp"
+#include "winkeyer.hpp"
 
-#include "userinterface.h"
+#define SETTINGS_FLAGS_SIDETONE 0x01
+#define SETTINGS_FLAGS_REVERSE 0x02
+#define SETTINGS_FLAGS_DECODER 0x04
+#define SETTINGS_FLAGS_DECODERUPPERCASE 0x08
 
-extern UserInterface ui;
-extern Winkeyer winkeyer;
+#define SETTINGS_DECODER_OFF 0
+#define SETTINGS_DECODER_UPPERCASE 1
+#define SETTINGS_DECODER_LOWERCASE 2
 
-// Class constructor
-// Set default values
-Settings::Settings(){
-  setDefaults();
+static uint8_t persistentData[SETTINGS_PDATA_SIZE];
+static unsigned long cw_clock;
+static unsigned long cw_clock_x2;
+static unsigned long cw_clock_x7;
+static unsigned long cw_dit_keydown;
+static unsigned long cw_dit_keyup;
+static unsigned long cw_dah_keydown;
+static unsigned long ptt_timeout;
+static int sidetone_freq;
+
+void settingsSaveSettings() {
+  storageSave(persistentData);
 }
 
-void Settings::setDefaults(){
-  // Some sane default values
-  PersistentData.speed_max = 99;
-  PersistentData.speed_min = 10;
-  PersistentData.weight_max = 75;
-  PersistentData.weight_min = 25;
-  PersistentData.ratio_max = 40;
-  PersistentData.ratio_min = 20;
-  PersistentData.speed = 25;
-  PersistentData.weight = 50;
-  PersistentData.ratio = 30;
-  PersistentData.keying_mode = 0;
-  PersistentData.reverse = 0;
-  PersistentData.sidetone = 1;
-  PersistentData.sidetone_freq = 800;
-}
-
-// Sum all eeprom items
-uint8_t Settings::addPersistentDataItems(){
-  uint8_t sum = 13; // Number of elements
-  sum += PersistentData.speed_max;
-  sum += PersistentData.speed_min;
-  sum += PersistentData.weight_max;
-  sum += PersistentData.weight_min;
-  sum += PersistentData.ratio_max;
-  sum += PersistentData.ratio_min;
-  sum += PersistentData.speed;
-  sum += PersistentData.weight;
-  sum += PersistentData.ratio;
-  sum += PersistentData.keying_mode;
-  sum += PersistentData.reverse;
-  sum += PersistentData.sidetone;
-  sum += PersistentData.sidetone_freq;
-  return sum;
-}
-
-// Add checksum
-void Settings::updatePersistentDataChecksum(){
-  uint8_t checksum = addPersistentDataItems();
-  PersistentData.checksum = ~checksum + 1;
-}
-
-// Check checkSum
-uint8_t Settings::checkPersistentDataChecksum(){
-  uint8_t checksum = addPersistentDataItems();
-  checksum += PersistentData.checksum;
-  return checksum;
-}
-
-void Settings::begin(){
-  EEPROM.get(0, PersistentData);
-  uint8_t checksum = checkPersistentDataChecksum();
-  if (checksum){
-    // Checksum failed. Save
-    // default values to eeprom
-    setDefaults();
-    updatePersistentDataChecksum();
-    EEPROM.put(0, PersistentData);
-  }
-  updateTimmings();
-} 
-
-void Settings::saveSettings(){
-  updatePersistentDataChecksum();
-  EEPROM.put(0, PersistentData);
-}
-
-void Settings::updateTimmings(){
+static void updateTimmings() {
   // Calculates dot clock
-  cw_clock = 1200000 / PersistentData.speed;
+  cw_clock = 1200000 / persistentData[SETTINGS_PDATA_SPEED];
 
   // Some multiples of CW_CLOCK
   cw_clock_x2 = cw_clock * 2;
   cw_clock_x7 = cw_clock * 7;
 
   // Calculates key down time for dot and given weight
-  cw_dit_keydown = (cw_clock_x2 * PersistentData.weight) / 100;
+  cw_dit_keydown = (cw_clock_x2 * persistentData[SETTINGS_PDATA_WEIGHT]) / 100;
 
   // Calculates key up time for dot
   cw_dit_keyup = cw_clock_x2 - cw_dit_keydown;
 
   // Calculated key down time for dah at given ratio
-  cw_dah_keydown = (cw_clock * PersistentData.ratio) / 10;
+  cw_dah_keydown = (cw_clock * persistentData[SETTINGS_PDATA_RATIO]) / 10;
 
   // Calculates the PTT timeout
   ptt_timeout = cw_clock * 16;
+
+  // Sidetone frequency in Hz
+  sidetone_freq = persistentData[SETTINGS_PDATA_TONE] * 50;
 }
 
-uint8_t Settings::getSpeed_max(){
-  return PersistentData.speed_max;
+void settingsBegin() {
+  // Some sane default values
+  persistentData[SETTINGS_PDATA_SPEED] = 25;
+  persistentData[SETTINGS_PDATA_WEIGHT] = 50;
+  persistentData[SETTINGS_PDATA_RATIO] = 30;
+  persistentData[SETTINGS_PDATA_KMODE] = 0;
+  persistentData[SETTINGS_PDATA_TONE] = 800 / 50;
+  persistentData[SETTINGS_PDATA_FLAGS] = SETTINGS_FLAGS_SIDETONE;
+  storageLoad(persistentData);
+  updateTimmings();
 }
 
-uint8_t Settings::getSpeed_min(){
-  return PersistentData.speed_min;
+uint8_t settingsGetSpeed() {
+  return persistentData[SETTINGS_PDATA_SPEED];
 }
 
-uint8_t Settings::getWeight_max(){
-  return PersistentData.weight_max;
+void settingsSetSpeed(uint8_t value) {
+  if (value < SETTINGS_SPEED_MIN) {
+    value = SETTINGS_SPEED_MIN;
+  }
+
+  if (value > SETTINGS_SPEED_MAX) {
+    value = SETTINGS_SPEED_MAX;
+  }
+
+  persistentData[SETTINGS_PDATA_SPEED] = value;
+  updateTimmings();
+  userInterfaceForceRefresh();
 }
 
-uint8_t Settings::getWeight_min(){
-  return PersistentData.weight_min;
+uint8_t settingsGetWeight() {
+  return persistentData[SETTINGS_PDATA_WEIGHT];
 }
 
-uint8_t Settings::getRatio_max(){
-  return PersistentData.ratio_max;
+void settingsSetWeight(uint8_t value) {
+  if (value < SETTINGS_WEIGHT_MIN) {
+    value = SETTINGS_WEIGHT_MIN;
+  }
+
+  if (value > SETTINGS_WEIGHT_MAX) {
+    value = SETTINGS_WEIGHT_MAX;
+  }
+
+  persistentData[SETTINGS_PDATA_WEIGHT] = value;
+  updateTimmings();
 }
 
-uint8_t Settings::getRatio_min(){
-  return PersistentData.ratio_min;
+uint8_t settingsGetRatio() {
+  return persistentData[SETTINGS_PDATA_RATIO];
 }
 
-uint8_t Settings::getSpeed(){
-  return PersistentData.speed;
+void settingsSetRatio(uint8_t value) {
+  if (value < SETTINGS_RATIO_MIN) {
+    value = SETTINGS_RATIO_MIN;
+  }
+
+  if (value > SETTINGS_RATIO_MAX) {
+    value = SETTINGS_RATIO_MAX;
+  }
+  
+  persistentData[SETTINGS_PDATA_RATIO] = value;
+  updateTimmings();
 }
 
-uint8_t Settings::getWeight(){
-  return PersistentData.weight;
+bool settingsGetSidetone() {
+  return (persistentData[SETTINGS_PDATA_FLAGS] & SETTINGS_FLAGS_SIDETONE) != 0;
 }
 
-uint8_t Settings::getRatio(){
-  return PersistentData.ratio;
+void settingsSetSidetone(bool value) {
+  if (value) {
+    persistentData[SETTINGS_PDATA_FLAGS] = persistentData[SETTINGS_PDATA_FLAGS] | SETTINGS_FLAGS_SIDETONE;
+  } else {
+    persistentData[SETTINGS_PDATA_FLAGS] = persistentData[SETTINGS_PDATA_FLAGS] & ~SETTINGS_FLAGS_SIDETONE;
+  }
 }
 
-uint8_t Settings::getSidetone(){
-  return (PersistentData.sidetone != 0);
+int settingsGetSidetone_freq() {
+  return sidetone_freq;
 }
 
-int Settings::getSidetone_freq(){
-  return PersistentData.sidetone_freq;
+void settingsSetSidetone_freq(int value) {
+  persistentData[SETTINGS_PDATA_TONE] = value / 50;
+  updateTimmings();
 }
 
-uint8_t Settings::getKeyer(){
-  return PersistentData.keying_mode;
+uint8_t settingsGetKeyer() {
+  return persistentData[SETTINGS_PDATA_KMODE];
 }
 
-uint8_t Settings::getReverse(){
-  return (PersistentData.reverse != 0);
+void settingsSetKeyer(uint8_t value) {
+  persistentData[SETTINGS_PDATA_KMODE] = value;
 }
 
-unsigned long Settings::get_cw_clock(){
+bool settingsGetReverse() {
+  return (persistentData[SETTINGS_PDATA_FLAGS] & SETTINGS_FLAGS_REVERSE) != 0;
+}
+
+void settingsSetReverse(bool value) {
+  if (value) {
+    persistentData[SETTINGS_PDATA_FLAGS] = persistentData[SETTINGS_PDATA_FLAGS] | SETTINGS_FLAGS_REVERSE;
+  } else {
+    persistentData[SETTINGS_PDATA_FLAGS] = persistentData[SETTINGS_PDATA_FLAGS] & ~SETTINGS_FLAGS_REVERSE;
+  }
+}
+
+bool settingsGetDecoderUpperCase(){
+  return (persistentData[SETTINGS_PDATA_FLAGS] & SETTINGS_FLAGS_DECODERUPPERCASE) != 0;
+}
+
+uint8_t settingsGetDecoder(){
+  uint8_t value = 0;
+  if ((persistentData[SETTINGS_PDATA_FLAGS] & SETTINGS_FLAGS_DECODER) != 0){
+    if (settingsGetDecoderUpperCase()){
+      value = SETTINGS_DECODER_UPPERCASE;
+    } else {
+      value = SETTINGS_DECODER_LOWERCASE;
+    }
+  }
+  return value;
+}
+
+void settingsSetDecoder(uint8_t value){
+  switch (value){
+    case SETTINGS_DECODER_OFF:
+      persistentData[SETTINGS_PDATA_FLAGS] = persistentData[SETTINGS_PDATA_FLAGS] & ~SETTINGS_FLAGS_DECODER;
+      persistentData[SETTINGS_PDATA_FLAGS] = persistentData[SETTINGS_PDATA_FLAGS] & ~SETTINGS_FLAGS_DECODERUPPERCASE;
+      break;
+    case SETTINGS_DECODER_UPPERCASE:
+      persistentData[SETTINGS_PDATA_FLAGS] = persistentData[SETTINGS_PDATA_FLAGS] | SETTINGS_FLAGS_DECODER;
+      persistentData[SETTINGS_PDATA_FLAGS] = persistentData[SETTINGS_PDATA_FLAGS] | SETTINGS_FLAGS_DECODERUPPERCASE;
+      break;
+    case SETTINGS_DECODER_LOWERCASE:
+      persistentData[SETTINGS_PDATA_FLAGS] = persistentData[SETTINGS_PDATA_FLAGS] | SETTINGS_FLAGS_DECODER;
+      persistentData[SETTINGS_PDATA_FLAGS] = persistentData[SETTINGS_PDATA_FLAGS] & ~SETTINGS_FLAGS_DECODERUPPERCASE;
+      break;
+  }
+}
+
+unsigned long settingsGet_cw_clock() {
   return cw_clock;
 }
 
-unsigned long Settings::get_cw_clock_x2(){
+unsigned long settingsGet_cw_clock_x2() {
   return cw_clock_x2;
 }
 
-unsigned long Settings::get_cw_clock_x7(){
+unsigned long settingsGet_cw_clock_x7() {
   return cw_clock_x7;
 }
 
-unsigned long Settings::get_cw_dit_keydown(){
+unsigned long settingsGet_cw_dit_keydown() {
   return cw_dit_keydown;
 }
 
-unsigned long Settings::get_cw_dit_keyup(){
+unsigned long settingsGet_cw_dit_keyup() {
   return cw_dit_keyup;
 }
 
-unsigned long Settings::get_cw_dah_keydown(){
+unsigned long settingsGet_cw_dah_keydown() {
   return cw_dah_keydown;
 }
-unsigned long Settings::get_ptt_timeout(){
+unsigned long settingsGet_ptt_timeout() {
   return ptt_timeout;
-}
-
-unsigned long Settings::getSwitchpointDelay(){
-  return switchpoint_delay;
-}
-
-void Settings::setSpeedRange(uint8_t min, uint8_t max){
-  PersistentData.speed_max = max;
-  PersistentData.speed_min = min;
-  if (PersistentData.speed > max){
-    PersistentData.speed = max;
-  }
-  if (PersistentData.speed < min){
-    PersistentData.speed = min;
-  }
-  updateTimmings();
-}
-
-void Settings::setWeightRange(uint8_t min, uint8_t max){
-  PersistentData.weight_max = max;
-  PersistentData.weight_min = min;
-  if (PersistentData.weight > max){
-    PersistentData.weight = max;
-  }
-  if (PersistentData.weight < min){
-    PersistentData.weight = min;
-  }
-  updateTimmings();
-}
-
-void Settings::setRatioRange(uint8_t min, uint8_t max){
-  PersistentData.ratio_max = max;
-  PersistentData.ratio_min = min;
-  if (PersistentData.ratio > max){
-    PersistentData.ratio = max;
-  }
-  if (PersistentData.ratio < min){
-    PersistentData.ratio = min;
-  }
-  updateTimmings();
-}
-
-void Settings::setSpeed(uint8_t value){
-  if (value < ABS_SPEED_MIN){
-    value = ABS_SPEED_MIN;
-  }
-
-  if (value > ABS_SPEED_MAX){
-    value = ABS_SPEED_MAX;
-  }
-
-  PersistentData.speed = value;
-  updateTimmings();
-  ui.forceRefresh();
-}
-
-void Settings::setWeight(uint8_t value){
-  PersistentData.weight = value;
-  updateTimmings();
-}
-
-void Settings::setRatio(uint8_t value){
-  PersistentData.ratio = value;
-  updateTimmings();
-}
-
-void Settings::setSidetone(uint8_t value){
-  PersistentData.sidetone = (value != 0);
-}
-
-void Settings::setSidetone_freq(int value){
-  PersistentData.sidetone_freq = value;
-}
-
-void Settings::setKeyer(uint8_t value){
-  PersistentData.keying_mode = value;
-}
-
-void Settings::setReverse(uint8_t value){
-  PersistentData.reverse = (value != 0);
 }

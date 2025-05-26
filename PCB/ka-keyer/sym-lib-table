@@ -1,4 +1,0 @@
-(sym_lib_table
-  (version 7)
-  (lib (name "open_cw_keyer_mk2_v30-eagle-import")(type "KiCad")(uri "${KIPRJMOD}/open_cw_keyer_mk2_v30-eagle-import.kicad_sym")(options "")(descr ""))
-)

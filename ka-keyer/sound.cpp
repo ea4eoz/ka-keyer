@@ -1,42 +1,43 @@
-#include "sound.h"
+#include "sound.hpp"
 
 #define TONE_DURATION 50
 #define TONE_SPACING 20
 #define TONE_HIGH 1200
 #define TONE_LOW 800
 
-Sound::Sound(uint8_t pin){
-  _buzzer_pin = pin;
-  pinMode(_buzzer_pin, OUTPUT);
+static uint8_t buzzerPin;
+
+void soundConfigure(uint8_t pin) {
+  buzzerPin = pin;
+  pinMode(buzzerPin, OUTPUT);
 }
 
-void Sound::start(int frequency){
-  tone(_buzzer_pin, frequency);
+void soundStart(int frequency) {
+  tone(buzzerPin, frequency);
 }
 
-void Sound::stop(){
-  noTone(_buzzer_pin);
+void soundStop() {
+  noTone(buzzerPin);
 }
 
-void Sound::sound(int frequency, int duration){
-  start(frequency);
+void soundSound(int frequency, int duration) {
+  soundStart(frequency);
   delay(duration);
-  stop();
+  soundStop();
 }
 
-void Sound::beep(){
-  sound(TONE_HIGH, TONE_DURATION);
+void soundBeep() {
+  soundSound(TONE_HIGH, TONE_DURATION);
 }
 
-void Sound::ascent(){
-  sound(TONE_LOW, TONE_DURATION);
+void soundAscent() {
+  soundSound(TONE_LOW, TONE_DURATION);
   delay(TONE_SPACING);
-  sound(TONE_HIGH, TONE_DURATION);
+  soundSound(TONE_HIGH, TONE_DURATION);
 }
 
-void Sound::descent(){
-  sound(TONE_HIGH, TONE_DURATION);
+void soundDescent() {
+  soundSound(TONE_HIGH, TONE_DURATION);
   delay(TONE_SPACING);
-  sound(TONE_LOW, TONE_DURATION);
+  soundSound(TONE_LOW, TONE_DURATION);
 }
-

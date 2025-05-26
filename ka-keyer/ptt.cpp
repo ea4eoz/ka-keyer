@@ -1,32 +1,38 @@
-#include "ptt.h"
-#include "settings.h"
+#include "ptt.hpp"
+#include "settings.hpp"
 
 #define OFF 0
 #define ON 1
 
-extern Settings settings;
+static uint8_t pttPin;
+static uint8_t keyerPin;
 
-PTT::PTT(uint8_t ptt, uint8_t keyer_output) {
-  _ptt_pin = ptt;
-  _keyer_pin = keyer_output;
-  pinMode(_ptt_pin, OUTPUT);
+void pttConfigure(uint8_t ptt, uint8_t keyer_output) {
+  pttPin = ptt;
+  keyerPin = keyer_output;
+  pinMode(pttPin, OUTPUT);
 }
 
-void PTT::process() {
+void pttProcess() {
+  static bool state;
+  static bool lastState;
+  static unsigned long lastPTTing;
+  static unsigned long elapsed;
+
   // Sniff the keying output
-  if (digitalRead(_keyer_pin)) {
-    _last_ptting = micros();
-    digitalWrite(_ptt_pin, ON);
+  if (digitalRead(keyerPin)) {
+    lastPTTing = micros();
+    digitalWrite(pttPin, ON);
   }
 
   //State for ptt
-  _elapsed = micros() - _last_ptting;
-  _state = _elapsed > settings.get_ptt_timeout();
+  elapsed = micros() - lastPTTing;
+  state = elapsed > settingsGet_ptt_timeout();
 
   // PTT OFF time?
-  if ((_state) & (!_last_state)) {
-    digitalWrite(_ptt_pin, OFF);
+  if ((state) & (!lastState)) {
+    digitalWrite(pttPin, OFF);
   }
 
-  _last_state = _state;
+  lastState = state;
 }
