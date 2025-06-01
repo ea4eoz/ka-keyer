@@ -165,6 +165,10 @@ The Waveshare RP2040 Zero board is a double side board with components at both s
 
 ![RP2040 Mounting](images/rp2040.jpg)
 
+### Power bank operation
+
+R15 and R16 are two 120 ohms 0.25 watts resistors that increases the current draw of the keyer in about 80 mA. This should be enough to keep a small power bank alive while using it with KA-Keyer. They are optional and you can omit them if you do not have plans to use a power bank with KA-Keyer.
+
 ## Materials
 
 ### Aluminum box
